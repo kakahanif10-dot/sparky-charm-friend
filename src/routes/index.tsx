@@ -1,24 +1,47 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
+import { SiteHeader } from "@/components/landing/site-header";
+import { Hero } from "@/components/landing/hero";
+import { Showcase } from "@/components/landing/showcase";
+import { Features } from "@/components/landing/features";
+import { HowItWorks } from "@/components/landing/how-it-works";
+import { PricingCta } from "@/components/landing/pricing-cta";
+import { SiteFooter } from "@/components/landing/site-footer";
+
+const title = "SUPERINTELLIGENS — Build software with AI";
+const description =
+  "Describe your idea in plain language and watch it become a real, deployable app with instant preview and one-click deploy.";
+
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [
+      { title },
+      { name: "description", content: description },
+      { property: "og:title", content: title },
+      { property: "og:description", content: description },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+    links: [{ rel: "canonical", href: "/" }],
+  }),
+  component: HomePage,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+function HomePage() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+    <main className="landing-page relative min-h-screen bg-background">
+      <div className="hero-pastel">
+        <SiteHeader />
+        <Hero />
+      </div>
+
+      <div className="landing-light">
+        <Showcase />
+        <Features />
+        <HowItWorks />
+        <PricingCta />
+        <SiteFooter />
+      </div>
+    </main>
   );
 }

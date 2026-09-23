@@ -1,0 +1,16 @@
+{
+  "name": "SUPERINTELLIGENS",
+  "short_name": "SUPERINTELLIGENS",
+  "description": "Describe an idea, generate a complete app, preview it live, and export the source with SUPERINTELLIGENS.",
+  "start_url": "/workspace",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0a",
+  "theme_color": "#633CEA",
+  "icons": [
+    { "src": "/superintelligens-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/superintelligens-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/superintelligens-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
