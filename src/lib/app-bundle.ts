@@ -81,8 +81,14 @@ try {
 }
 `
 
-/** Builds the full HTML document that runs the generated app in an iframe. */
-export function bundleToHtml(files: AppFile[]): string {
+/**
+ * Builds the full HTML document that runs the generated app — used both for the
+ * in-editor iframe preview and for the published public page.
+ */
+export function bundleToHtml(
+  files: AppFile[],
+  meta?: { title?: string; description?: string },
+): string {
   const map: Record<string, string> = {}
   for (const f of files) map[f.path] = f.content
 
