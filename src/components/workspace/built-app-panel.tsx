@@ -90,8 +90,54 @@ export function BuiltAppPanel({
             <Download className="h-3.5 w-3.5" />
             Source
           </button>
+          <button
+            type="button"
+            disabled={!files.length || publishing}
+            onClick={() => (app?.published ? onUnpublish?.() : onPublish?.())}
+            className={cn(
+              'flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition disabled:opacity-40',
+              app?.published
+                ? 'border border-border text-muted-foreground hover:text-foreground'
+                : 'bg-primary text-primary-foreground hover:opacity-90',
+            )}
+          >
+            {publishing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Globe className="h-3.5 w-3.5" />
+            )}
+            {app?.published ? 'Take offline' : 'Publish'}
+          </button>
         </div>
       </div>
+
+      {liveUrl && (
+        <div className="flex shrink-0 items-center gap-2 border-b border-border bg-primary/5 px-3 py-2">
+          <span className="text-xs font-medium text-foreground">Live</span>
+          <a
+            href={liveUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex min-w-0 items-center gap-1 truncate text-xs text-primary hover:underline"
+          >
+            <span className="truncate">{liveUrl}</span>
+            <ExternalLink className="h-3 w-3 shrink-0" />
+          </a>
+          <button
+            type="button"
+            onClick={() => {
+              void navigator.clipboard.writeText(liveUrl)
+              setCopied(true)
+              setTimeout(() => setCopied(false), 1600)
+            }}
+            className="ml-auto flex shrink-0 items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground transition hover:text-foreground"
+          >
+            <Copy className="h-3 w-3" />
+            {copied ? 'Copied' : 'Copy link'}
+          </button>
+        </div>
+      )}
+
 
       <div className="relative min-h-0 flex-1">
         {building && (
