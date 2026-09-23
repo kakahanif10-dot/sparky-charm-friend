@@ -12,7 +12,15 @@ export type SavedApp = {
   description: string
   prompt: string
   updatedAt: string
+  published: boolean
+  slug: string | null
   files: AppFile[]
+}
+
+function slugify(name: string) {
+  const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)
+  const suffix = Math.random().toString(36).slice(2, 7)
+  return `${base || 'app'}-${suffix}`
 }
 
 const BuildInput = z.object({
