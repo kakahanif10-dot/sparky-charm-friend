@@ -303,11 +303,10 @@ function WorkspacePage() {
     setPrompt('')
     if (IMAGE_INTENT.test(text)) {
       void runImage(text)
-    } else if (!spec.hasContent) {
+    } else if (!app) {
       void runGenerate(text, text)
     } else if (BUILD_INTENT.test(text)) {
-      const base = lastPrompt || spec.industry || 'the current app'
-      void runGenerate(`${base}. Also ${text}.`, text)
+      void runGenerate(text, text)
     } else {
       void runChat(text)
     }
@@ -318,7 +317,7 @@ function WorkspacePage() {
     void runGenerate(`${base}. Also ${rec.append}.`, `Please add: ${rec.label}`)
   }
 
-  // Universal App Input — industry quick-action seeds run generation directly.
+  // Universal App Input — industry quick-action seeds build directly.
   const handleIndustry = (seed: string) => {
     setPrompt('')
     void runGenerate(seed, seed)
@@ -330,7 +329,7 @@ function WorkspacePage() {
   }
 
   const handleExport = () => {
-    if (spec.hasContent) downloadSourceZip(spec)
+    if (app) void downloadAppZip(app.name, app.files)
   }
 
   const handleDeploy = () => {
@@ -340,29 +339,34 @@ function WorkspacePage() {
   }
 
   const selectSession = (id: string) => {
-    const s = sessions.find((x) => x.id === id)
-    if (!s) return
     setActiveId(id)
-    setSpec(s.spec)
     setPrompt('')
-    setLastPrompt(s.prompt)
     setError(null)
-    // Restore a lightweight conversation recap for the loaded project.
-    setMessages([
-      {
-        id: uid(),
-        role: 'assistant',
-        text: introMessage(s.spec),
-        recommendations: recommendationsFor(s.spec),
-      },
-    ])
+    void (async () => {
+      try {
+        const loaded = await runGetApp({ data: { appId: id } })
+        setApp(loaded)
+        setLastPrompt(loaded.prompt)
+        setSpec((s) => ({ ...s, appName: loaded.name, hasContent: true }))
+        setMessages([
+          {
+            id: uid(),
+            role: 'assistant',
+            text: `**${loaded.name}** loaded — ${loaded.files.length} source files. ${loaded.description}\n\nTell me what to change and I'll rewrite the code.`,
+          },
+        ])
+      } catch (err) {
+        setError((err as Error).message)
+      }
+    })()
   }
 
   const deleteSession = (id: string) => {
-    const next = sessions.filter((x) => x.id !== id)
-    persist(next)
+    setApps((list) => list.filter((x) => x.id !== id))
+    void runDeleteApp({ data: { appId: id } }).catch(() => void refreshApps())
     if (activeId === id) {
       setActiveId(null)
+      setApp(null)
       setSpec(DEFAULT_SPEC)
       setPrompt('')
       setLastPrompt('')
@@ -372,6 +376,7 @@ function WorkspacePage() {
 
   const newProject = () => {
     setActiveId(null)
+    setApp(null)
     setSpec(DEFAULT_SPEC)
     setPrompt('')
     setLastPrompt('')
@@ -381,13 +386,14 @@ function WorkspacePage() {
 
   const sidebarSessions = useMemo(
     () =>
-      sessions.map((s) => ({
-        id: s.id,
-        name: s.title,
-        updated: relativeTime(s.updated),
+      apps.map((a) => ({
+        id: a.id,
+        name: a.name,
+        updated: relativeTime(a.updatedAt),
       })),
-    [sessions],
+    [apps],
   )
+
 
   return (
     <div className="workspace-light flex h-screen overflow-hidden bg-background text-foreground">
