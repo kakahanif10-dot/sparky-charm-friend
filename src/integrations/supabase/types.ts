@@ -17,24 +17,39 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          building: string | null
           created_at: string
           display_name: string | null
           id: string
+          onboarded_at: string | null
+          team_size: string | null
+          theme_preference: string | null
           updated_at: string
+          user_role: string | null
         }
         Insert: {
           avatar_url?: string | null
+          building?: string | null
           created_at?: string
           display_name?: string | null
           id: string
+          onboarded_at?: string | null
+          team_size?: string | null
+          theme_preference?: string | null
           updated_at?: string
+          user_role?: string | null
         }
         Update: {
           avatar_url?: string | null
+          building?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
+          onboarded_at?: string | null
+          team_size?: string | null
+          theme_preference?: string | null
           updated_at?: string
+          user_role?: string | null
         }
         Relationships: []
       }
