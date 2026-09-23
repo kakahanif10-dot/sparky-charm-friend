@@ -92,7 +92,8 @@ function WorkspacePage() {
   const [chatWidth, setChatWidth] = useState(420)
   const [drawerWidth, setDrawerWidth] = useState(360)
   const [tab, setTab] = useState<SidebarTab>('chats')
-  const [sessions, setSessions] = useState<Session[]>([])
+  const [apps, setApps] = useState<AppSummary[]>([])
+  const [app, setApp] = useState<SavedApp | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [deployState, setDeployState] = useState<'idle' | 'deploying' | 'deployed'>('idle')
   const [chatExpanded, setChatExpanded] = useState(false)
@@ -117,22 +118,28 @@ function WorkspacePage() {
     hydrateTimer.current = setTimeout(() => setHydrating(false), COMPILE_DURATION_MS)
   }
 
-  // Hydrate sessions from the browser after mount (avoids SSR mismatch).
-  useEffect(() => {
-    const raw = typeof window !== 'undefined' ? localStorage.getItem(STORE_KEY) : null
-    if (raw) setSessions(decode(raw))
-  }, [])
+  const runBuildApp = useServerFn(buildApp)
+  const runListApps = useServerFn(listApps)
+  const runGetApp = useServerFn(getApp)
+  const runDeleteApp = useServerFn(deleteAppFn)
 
-  const persist = (next: Session[]) => {
-    setSessions(next)
+  // Load the user's saved apps.
+  const refreshApps = async () => {
     try {
-      localStorage.setItem(STORE_KEY, encode(next))
+      const rows = await runListApps()
+      setApps(rows.map((r) => ({ id: r.id, name: r.name, updatedAt: r.updatedAt })))
     } catch {
-      /* storage unavailable — stay in-memory */
+      /* listing is non-critical */
     }
   }
 
-  // Core generation routine, shared by the composer and the recommendation chips.
+  useEffect(() => {
+    void refreshApps()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Core build routine — generates real source files, stores them on the
+  // account and renders them in the live preview.
   const runGenerate = async (fullPrompt: string, userLabel: string) => {
     if (generating) return
     setGenerating(true)
@@ -140,61 +147,33 @@ function WorkspacePage() {
     setMessages((m) => [...m, { id: uid(), role: 'user', text: userLabel }])
 
     try {
-      const fetchPromise = fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userPrompt: fullPrompt }),
-      }).then(async (res) => ({ ok: res.ok, data: await res.json() }))
+      const built = await runBuildApp({
+        data: { prompt: fullPrompt, appId: activeId },
+      })
 
-      // Hold the reveal until the compile log has fully streamed (~3.6s).
-      const [{ ok, data }] = await Promise.all([fetchPromise, delay(COMPILE_DURATION_MS)])
-
-      if (!ok || !data.success) {
-        throw new Error(data?.error || data?.message || 'Generation failed')
-      }
-
-      const newSpec = data.spec as DesignSpec
-      setSpec(newSpec)
+      setApp(built)
+      setActiveId(built.id)
       setLastPrompt(fullPrompt)
+      setSpec((s) => ({ ...s, appName: built.name, hasContent: true }))
 
       setMessages((m) => [
         ...m,
         {
           id: uid(),
           role: 'assistant',
-          text: introMessage(newSpec),
-          recommendations: recommendationsFor(newSpec),
+          text: `**${built.name}** is built. ${built.description}\n\nI wrote ${built.files.length} real source files — open the Code tab to read them, or Source to download the project. Tell me what to change next and I'll rewrite the code.`,
         },
       ])
 
-      // Persist / update the session.
-      const title = newSpec.appName || userLabel.slice(0, 24)
-      if (activeId) {
-        persist(
-          sessions.map((se) =>
-            se.id === activeId
-              ? { ...se, title, prompt: fullPrompt, spec: newSpec, updated: Date.now() }
-              : se,
-          ),
-        )
-      } else {
-        const id = uid()
-        persist(
-          [
-            { id, title, prompt: fullPrompt, spec: newSpec, updated: Date.now() },
-            ...sessions,
-          ].slice(0, 30),
-        )
-        setActiveId(id)
-      }
       setTab('chats')
+      void refreshApps()
     } catch (err) {
       setMessages((m) => [
         ...m,
         {
           id: uid(),
           role: 'assistant',
-          text: `I hit a snag compiling that: ${(err as Error).message}. Try rephrasing the prompt or generate again.`,
+          text: `I hit a snag building that: ${(err as Error).message}. Try rephrasing the prompt or build again.`,
         },
       ])
       setError((err as Error).message)
@@ -202,6 +181,7 @@ function WorkspacePage() {
       setGenerating(false)
     }
   }
+
 
   // Conversational reply path — the consultant actually talks back (distinct
   // from compiling an app). Backed by /api/chat with a local fallback.
