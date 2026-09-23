@@ -24,16 +24,27 @@ type Device = 'desktop' | 'mobile'
 export function BuiltAppPanel({
   app,
   building,
+  publishing,
+  onPublish,
+  onUnpublish,
 }: {
   app: SavedApp | null
   building: boolean
+  publishing?: boolean
+  onPublish?: () => void
+  onUnpublish?: () => void
 }) {
   const [tab, setTab] = useState<Tab>('preview')
   const [device, setDevice] = useState<Device>('desktop')
   const [nonce, setNonce] = useState(0)
   const [activePath, setActivePath] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const files = app?.files ?? []
+  const [origin, setOrigin] = useState('')
+  useEffect(() => setOrigin(window.location.origin), [])
+  const liveUrl =
+    app?.published && app.slug ? `${origin}/api/public/app/${app.slug}` : null
 
   useEffect(() => {
     setActivePath(
