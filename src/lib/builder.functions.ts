@@ -177,6 +177,8 @@ export const getApp = createServerFn({ method: 'POST' })
       description: app.description ?? '',
       prompt: app.prompt,
       updatedAt: app.updated_at,
+      published: app.published,
+      slug: app.slug,
       files: files ?? [],
     }
   })
