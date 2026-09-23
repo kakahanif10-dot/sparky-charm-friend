@@ -359,3 +359,28 @@
 
 /* Hide the Lovable badge everywhere */
 #lovable-badge { display: none !important; }
+
+/* White mode — chosen in the welcome questions, applied on <html>. */
+.theme-white,
+.theme-white .workspace-light {
+  color-scheme: light;
+  --background: oklch(0.99 0 0);
+  --foreground: oklch(0.21 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0 0);
+  --secondary: oklch(0.955 0 0);
+  --secondary-foreground: oklch(0.21 0 0);
+  --muted: oklch(0.96 0 0);
+  --muted-foreground: oklch(0.45 0 0);
+  --border: oklch(0.2 0 0 / 12%);
+  --input: oklch(0.2 0 0 / 14%);
+  --destructive: oklch(0.55 0.21 25);
+  --sidebar: oklch(0.975 0 0);
+  --sidebar-foreground: oklch(0.21 0 0);
+  --sidebar-border: oklch(0.2 0 0 / 12%);
+  --sidebar-accent: oklch(0.94 0 0);
+  --header-dark-foreground: oklch(0.21 0 0);
+  --header-dark-muted: oklch(0.45 0 0);
+}

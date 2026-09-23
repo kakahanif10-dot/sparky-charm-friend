@@ -1,10 +1,24 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
+import { supabase } from '@/integrations/supabase/client'
+import { applyAppearance } from '@/lib/appearance'
+
 
 const title = 'Workspace — SUPERINTELLIGENS'
 const description =
   'Chat with the AI consultant, compile your app spec and preview it live on phone, tablet and desktop.'
 
 export const Route = createFileRoute('/_authenticated/workspace')({
+  beforeLoad: async () => {
+    const { data: auth } = await supabase.auth.getUser()
+    if (!auth.user) return
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('onboarded_at, theme_preference')
+      .eq('id', auth.user.id)
+      .maybeSingle()
+    if (profile && !profile.onboarded_at) throw redirect({ to: '/onboarding' })
+    applyAppearance(profile?.theme_preference === 'light' ? 'light' : 'dark')
+  },
   head: () => ({
     meta: [
       { title },
@@ -18,6 +32,7 @@ export const Route = createFileRoute('/_authenticated/workspace')({
   }),
   component: WorkspacePage,
 })
+
 
 
 import { useEffect, useMemo, useRef, useState } from 'react'

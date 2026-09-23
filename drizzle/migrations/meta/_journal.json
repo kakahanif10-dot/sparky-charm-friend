@@ -8,6 +8,13 @@
       "when": 1790183224354,
       "tag": "0000_create_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790183983606,
+      "tag": "0001_add_onboarding_to_profiles",
+      "breakpoints": true
     }
   ]
 }
