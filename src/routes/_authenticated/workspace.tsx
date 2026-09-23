@@ -36,8 +36,9 @@ export const Route = createFileRoute('/_authenticated/workspace')({
 
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useServerFn } from '@tanstack/react-start'
 import { ConsultantPanel } from '@/components/workspace/consultant-panel'
-import { ResponsivePreview } from '@/components/workspace/responsive-preview'
+import { BuiltAppPanel } from '@/components/workspace/built-app-panel'
 import { ThemeDrawer } from '@/components/workspace/theme-drawer'
 import {
   WorkspaceSidebar,
@@ -47,43 +48,21 @@ import { WorkspaceTopnav } from '@/components/workspace/workspace-topnav'
 import { ResizeHandle } from '@/components/workspace/resize-handle'
 import { DEFAULT_SPEC, type DesignSpec } from '@/lib/design'
 import {
+  buildApp,
+  deleteApp as deleteAppFn,
+  getApp,
+  listApps,
+  type SavedApp,
+} from '@/lib/builder.functions'
+import { downloadAppZip } from '@/lib/app-bundle'
+import {
   COMPILE_DURATION_MS,
-  downloadSourceZip,
-  introMessage,
-  recommendationsFor,
   type ConsultantMessage,
   type Recommendation,
 } from '@/lib/consultant'
 
-type Session = {
-  id: string
-  title: string
-  prompt: string
-  spec: DesignSpec
-  updated: number
-}
-
-const STORE_KEY = 'superintelligens.sessions.v1'
-
-// Persist sessions as a base64 string — lightweight, client-only, 0 MB server storage.
-function encode(sessions: Session[]): string {
-  try {
-    return btoa(unescape(encodeURIComponent(JSON.stringify(sessions))))
-  } catch {
-    return ''
-  }
-}
-function decode(raw: string): Session[] {
-  try {
-    const parsed = JSON.parse(decodeURIComponent(escape(atob(raw))))
-    return Array.isArray(parsed) ? (parsed as Session[]) : []
-  } catch {
-    return []
-  }
-}
-
-function relativeTime(ts: number): string {
-  const diff = Date.now() - ts
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
   const min = Math.round(diff / 60000)
   if (min < 1) return 'just now'
   if (min < 60) return `${min}m ago`
@@ -97,7 +76,7 @@ const uid = () =>
     ? crypto.randomUUID()
     : Math.random().toString(36).slice(2)
 
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
+type AppSummary = { id: string; name: string; updatedAt: string }
 
 function WorkspacePage() {
   const [prompt, setPrompt] = useState('')
