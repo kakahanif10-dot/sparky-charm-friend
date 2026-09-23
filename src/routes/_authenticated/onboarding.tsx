@@ -92,7 +92,7 @@ function OnboardingPage() {
       setError("We couldn't save your answers. Please try again.")
       return
     }
-    navigate({ to: '/workspace', replace: true, search: { intro: building || undefined } as never })
+    navigate({ to: '/workspace', replace: true })
   }
 
   return (
