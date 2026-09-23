@@ -140,7 +140,7 @@ export const listApps = createServerFn({ method: 'POST' })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from('generated_apps')
-      .select('id, name, description, prompt, updated_at')
+      .select('id, name, description, prompt, updated_at, published, slug')
       .order('updated_at', { ascending: false })
       .limit(50)
     if (error) throw new Error(error.message)
@@ -150,6 +150,8 @@ export const listApps = createServerFn({ method: 'POST' })
       description: a.description ?? '',
       prompt: a.prompt,
       updatedAt: a.updated_at,
+      published: a.published,
+      slug: a.slug,
     }))
   })
 
