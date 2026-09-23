@@ -52,6 +52,8 @@ import {
   deleteApp as deleteAppFn,
   getApp,
   listApps,
+  publishApp,
+  unpublishApp,
   type SavedApp,
 } from '@/lib/builder.functions'
 import { downloadAppZip } from '@/lib/app-bundle'
