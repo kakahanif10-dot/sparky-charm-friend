@@ -14,6 +14,71 @@ export type Database = {
   }
   public: {
     Tables: {
+      generated_app_files: {
+        Row: {
+          app_id: string
+          content: string
+          created_at: string
+          id: string
+          path: string
+        }
+        Insert: {
+          app_id: string
+          content?: string
+          created_at?: string
+          id?: string
+          path: string
+        }
+        Update: {
+          app_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_app_files_app_id_fkey"
+            columns: ["app_id"]
+            isOneToOne: false
+            referencedRelation: "generated_apps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      generated_apps: {
+        Row: {
+          created_at: string
+          description: string | null
+          entry: string
+          id: string
+          name: string
+          prompt: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          entry?: string
+          id?: string
+          name?: string
+          prompt?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          entry?: string
+          id?: string
+          name?: string
+          prompt?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
