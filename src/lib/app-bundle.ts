@@ -81,8 +81,14 @@ try {
 }
 `
 
-/** Builds the full HTML document that runs the generated app in an iframe. */
-export function bundleToHtml(files: AppFile[]): string {
+/**
+ * Builds the full HTML document that runs the generated app — used both for the
+ * in-editor iframe preview and for the published public page.
+ */
+export function bundleToHtml(
+  files: AppFile[],
+  meta?: { title?: string; description?: string },
+): string {
   const map: Record<string, string> = {}
   for (const f of files) map[f.path] = f.content
 
@@ -92,12 +98,23 @@ export function bundleToHtml(files: AppFile[]): string {
     .join('\n')
 
   const payload = JSON.stringify(map).replace(/</g, '\\u003c')
+  const esc = (v: string) =>
+    v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  const head = meta
+    ? `<title>${esc(meta.title ?? 'App')}</title>
+${meta.description ? `<meta name="description" content="${esc(meta.description)}" />` : ''}
+<meta property="og:title" content="${esc(meta.title ?? 'App')}" />
+<meta property="og:description" content="${esc(meta.description ?? '')}" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary_large_image" />`
+    : ''
 
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+${head}
 <script src="https://cdn.tailwindcss.com"></script>
 <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>

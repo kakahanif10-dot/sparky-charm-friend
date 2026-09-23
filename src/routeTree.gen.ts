@@ -17,6 +17,7 @@ import { Route as AuthenticatedWorkspaceRouteImport } from './routes/_authentica
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as ApiGenerateRouteImport } from './routes/api/generate'
 import { Route as ApiImageRouteImport } from './routes/api/image'
+import { Route as ApiPublicAppSlugRouteImport } from './routes/api/public/app/$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -57,6 +58,11 @@ const ApiImageRoute = ApiImageRouteImport.update({
   path: '/api/image',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAppSlugRoute = ApiPublicAppSlugRouteImport.update({
+  id: '/api/public/app/$slug',
+  path: '/api/public/app/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -66,6 +72,7 @@ export interface FileRoutesByFullPath {
   '/api/chat': typeof ApiChatRoute
   '/api/generate': typeof ApiGenerateRoute
   '/api/image': typeof ApiImageRoute
+  '/api/public/app/$slug': typeof ApiPublicAppSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/api/chat': typeof ApiChatRoute
   '/api/generate': typeof ApiGenerateRoute
   '/api/image': typeof ApiImageRoute
+  '/api/public/app/$slug': typeof ApiPublicAppSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/api/chat': typeof ApiChatRoute
   '/api/generate': typeof ApiGenerateRoute
   '/api/image': typeof ApiImageRoute
+  '/api/public/app/$slug': typeof ApiPublicAppSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/generate'
     | '/api/image'
+    | '/api/public/app/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/generate'
     | '/api/image'
+    | '/api/public/app/$slug'
   id:
     | '__root__'
     | '/'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/generate'
     | '/api/image'
+    | '/api/public/app/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -125,6 +137,7 @@ export interface RootRouteChildren {
   ApiChatRoute: typeof ApiChatRoute
   ApiGenerateRoute: typeof ApiGenerateRoute
   ApiImageRoute: typeof ApiImageRoute
+  ApiPublicAppSlugRoute: typeof ApiPublicAppSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -185,6 +198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiImageRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/app/$slug': {
+      id: '/api/public/app/$slug'
+      path: '/api/public/app/$slug'
+      fullPath: '/api/public/app/$slug'
+      preLoaderRoute: typeof ApiPublicAppSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -208,6 +228,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChatRoute: ApiChatRoute,
   ApiGenerateRoute: ApiGenerateRoute,
   ApiImageRoute: ApiImageRoute,
+  ApiPublicAppSlugRoute: ApiPublicAppSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

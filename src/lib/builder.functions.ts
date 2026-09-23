@@ -12,7 +12,15 @@ export type SavedApp = {
   description: string
   prompt: string
   updatedAt: string
+  published: boolean
+  slug: string | null
   files: AppFile[]
+}
+
+function slugify(name: string) {
+  const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)
+  const suffix = Math.random().toString(36).slice(2, 7)
+  return `${base || 'app'}-${suffix}`
 }
 
 const BuildInput = z.object({
@@ -39,8 +47,10 @@ export const buildApp = createServerFn({ method: 'POST' })
     const built = await buildAppFiles(data.prompt, previous)
 
     let appId = data.appId
+    let published = false
+    let slug: string | null = null
     if (appId) {
-      const { error } = await supabase
+      const { data: row, error } = await supabase
         .from('generated_apps')
         .update({
           name: built.name,
@@ -49,7 +59,11 @@ export const buildApp = createServerFn({ method: 'POST' })
           updated_at: new Date().toISOString(),
         })
         .eq('id', appId)
+        .select('published, slug')
+        .single()
       if (error) throw new Error(error.message)
+      published = row?.published ?? false
+      slug = row?.slug ?? null
       const { error: delError } = await supabase
         .from('generated_app_files')
         .delete()
@@ -81,8 +95,44 @@ export const buildApp = createServerFn({ method: 'POST' })
       description: built.description,
       prompt: data.prompt,
       updatedAt: new Date().toISOString(),
+      published,
+      slug,
       files: built.files,
     }
+  })
+
+/** Makes the app live at a public URL that anyone can open. */
+export const publishApp = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ appId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }): Promise<{ published: boolean; slug: string }> => {
+    const { data: app, error: readError } = await context.supabase
+      .from('generated_apps')
+      .select('slug, name')
+      .eq('id', data.appId)
+      .single()
+    if (readError || !app) throw new Error(readError?.message ?? 'App not found.')
+
+    const slug = app.slug ?? slugify(app.name)
+    const { error } = await context.supabase
+      .from('generated_apps')
+      .update({ published: true, slug, published_at: new Date().toISOString() })
+      .eq('id', data.appId)
+    if (error) throw new Error(error.message)
+    return { published: true, slug }
+  })
+
+/** Takes the public URL offline again. */
+export const unpublishApp = createServerFn({ method: 'POST' })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ appId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from('generated_apps')
+      .update({ published: false })
+      .eq('id', data.appId)
+    if (error) throw new Error(error.message)
+    return { published: false }
   })
 
 export const listApps = createServerFn({ method: 'POST' })
@@ -90,7 +140,7 @@ export const listApps = createServerFn({ method: 'POST' })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from('generated_apps')
-      .select('id, name, description, prompt, updated_at')
+      .select('id, name, description, prompt, updated_at, published, slug')
       .order('updated_at', { ascending: false })
       .limit(50)
     if (error) throw new Error(error.message)
@@ -100,6 +150,8 @@ export const listApps = createServerFn({ method: 'POST' })
       description: a.description ?? '',
       prompt: a.prompt,
       updatedAt: a.updated_at,
+      published: a.published,
+      slug: a.slug,
     }))
   })
 
@@ -109,7 +161,7 @@ export const getApp = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }): Promise<SavedApp> => {
     const { data: app, error } = await context.supabase
       .from('generated_apps')
-      .select('id, name, description, prompt, updated_at')
+      .select('id, name, description, prompt, updated_at, published, slug')
       .eq('id', data.appId)
       .single()
     if (error || !app) throw new Error(error?.message ?? 'App not found.')
@@ -125,6 +177,8 @@ export const getApp = createServerFn({ method: 'POST' })
       description: app.description ?? '',
       prompt: app.prompt,
       updatedAt: app.updated_at,
+      published: app.published,
+      slug: app.slug,
       files: files ?? [],
     }
   })

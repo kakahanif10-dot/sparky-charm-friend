@@ -7,3 +7,4 @@
 - [x] Saved apps per account (sidebar list, reopen, delete, follow-up edits rewrite the code)
 - [x] Download generated app as a source zip
 - [ ] Android APK / AAB export — needs an Android build step that cannot run inside this app; would require a Capacitor wrapper plus an external build service
+- [x] Publish generated apps to a real public link (live/offline toggle, copy link)
