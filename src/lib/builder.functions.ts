@@ -161,7 +161,7 @@ export const getApp = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }): Promise<SavedApp> => {
     const { data: app, error } = await context.supabase
       .from('generated_apps')
-      .select('id, name, description, prompt, updated_at')
+      .select('id, name, description, prompt, updated_at, published, slug')
       .eq('id', data.appId)
       .single()
     if (error || !app) throw new Error(error?.message ?? 'App not found.')
