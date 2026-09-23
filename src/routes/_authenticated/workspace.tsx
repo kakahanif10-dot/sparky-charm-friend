@@ -124,6 +124,36 @@ function WorkspacePage() {
   const runListApps = useServerFn(listApps)
   const runGetApp = useServerFn(getApp)
   const runDeleteApp = useServerFn(deleteAppFn)
+  const runPublishApp = useServerFn(publishApp)
+  const runUnpublishApp = useServerFn(unpublishApp)
+  const [publishing, setPublishing] = useState(false)
+
+  // Put the generated app live at a public URL (or take it down again).
+  const handlePublish = async () => {
+    if (!app) return
+    setPublishing(true)
+    try {
+      const res = await runPublishApp({ data: { appId: app.id } })
+      setApp((prev) => (prev ? { ...prev, published: true, slug: res.slug } : prev))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not publish the app.')
+    } finally {
+      setPublishing(false)
+    }
+  }
+
+  const handleUnpublish = async () => {
+    if (!app) return
+    setPublishing(true)
+    try {
+      await runUnpublishApp({ data: { appId: app.id } })
+      setApp((prev) => (prev ? { ...prev, published: false } : prev))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not take the app offline.')
+    } finally {
+      setPublishing(false)
+    }
+  }
 
   // Load the user's saved apps.
   const refreshApps = async () => {
