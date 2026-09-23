@@ -15,6 +15,7 @@
     "rolldown": "1.2.1"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^4.0.72",
     "@ai-sdk/openai-compatible": "^3.0.53",
     "@base-ui/react": "^1.8.0",
     "@hookform/resolvers": "^5.2.2",
@@ -63,6 +64,7 @@
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^13.4.0",
     "input-otp": "^1.4.2",
+    "jszip": "^3.10.2",
     "lucide-react": "^0.575.0",
     "motion": "^13.4.0",
     "nanoid": "^6.0.1",

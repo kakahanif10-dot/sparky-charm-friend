@@ -36,8 +36,9 @@ export const Route = createFileRoute('/_authenticated/workspace')({
 
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useServerFn } from '@tanstack/react-start'
 import { ConsultantPanel } from '@/components/workspace/consultant-panel'
-import { ResponsivePreview } from '@/components/workspace/responsive-preview'
+import { BuiltAppPanel } from '@/components/workspace/built-app-panel'
 import { ThemeDrawer } from '@/components/workspace/theme-drawer'
 import {
   WorkspaceSidebar,
@@ -47,43 +48,21 @@ import { WorkspaceTopnav } from '@/components/workspace/workspace-topnav'
 import { ResizeHandle } from '@/components/workspace/resize-handle'
 import { DEFAULT_SPEC, type DesignSpec } from '@/lib/design'
 import {
+  buildApp,
+  deleteApp as deleteAppFn,
+  getApp,
+  listApps,
+  type SavedApp,
+} from '@/lib/builder.functions'
+import { downloadAppZip } from '@/lib/app-bundle'
+import {
   COMPILE_DURATION_MS,
-  downloadSourceZip,
-  introMessage,
-  recommendationsFor,
   type ConsultantMessage,
   type Recommendation,
 } from '@/lib/consultant'
 
-type Session = {
-  id: string
-  title: string
-  prompt: string
-  spec: DesignSpec
-  updated: number
-}
-
-const STORE_KEY = 'superintelligens.sessions.v1'
-
-// Persist sessions as a base64 string — lightweight, client-only, 0 MB server storage.
-function encode(sessions: Session[]): string {
-  try {
-    return btoa(unescape(encodeURIComponent(JSON.stringify(sessions))))
-  } catch {
-    return ''
-  }
-}
-function decode(raw: string): Session[] {
-  try {
-    const parsed = JSON.parse(decodeURIComponent(escape(atob(raw))))
-    return Array.isArray(parsed) ? (parsed as Session[]) : []
-  } catch {
-    return []
-  }
-}
-
-function relativeTime(ts: number): string {
-  const diff = Date.now() - ts
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
   const min = Math.round(diff / 60000)
   if (min < 1) return 'just now'
   if (min < 60) return `${min}m ago`
@@ -97,7 +76,7 @@ const uid = () =>
     ? crypto.randomUUID()
     : Math.random().toString(36).slice(2)
 
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
+type AppSummary = { id: string; name: string; updatedAt: string }
 
 function WorkspacePage() {
   const [prompt, setPrompt] = useState('')
@@ -113,7 +92,8 @@ function WorkspacePage() {
   const [chatWidth, setChatWidth] = useState(420)
   const [drawerWidth, setDrawerWidth] = useState(360)
   const [tab, setTab] = useState<SidebarTab>('chats')
-  const [sessions, setSessions] = useState<Session[]>([])
+  const [apps, setApps] = useState<AppSummary[]>([])
+  const [app, setApp] = useState<SavedApp | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [deployState, setDeployState] = useState<'idle' | 'deploying' | 'deployed'>('idle')
   const [chatExpanded, setChatExpanded] = useState(false)
@@ -138,22 +118,28 @@ function WorkspacePage() {
     hydrateTimer.current = setTimeout(() => setHydrating(false), COMPILE_DURATION_MS)
   }
 
-  // Hydrate sessions from the browser after mount (avoids SSR mismatch).
-  useEffect(() => {
-    const raw = typeof window !== 'undefined' ? localStorage.getItem(STORE_KEY) : null
-    if (raw) setSessions(decode(raw))
-  }, [])
+  const runBuildApp = useServerFn(buildApp)
+  const runListApps = useServerFn(listApps)
+  const runGetApp = useServerFn(getApp)
+  const runDeleteApp = useServerFn(deleteAppFn)
 
-  const persist = (next: Session[]) => {
-    setSessions(next)
+  // Load the user's saved apps.
+  const refreshApps = async () => {
     try {
-      localStorage.setItem(STORE_KEY, encode(next))
+      const rows = await runListApps()
+      setApps(rows.map((r) => ({ id: r.id, name: r.name, updatedAt: r.updatedAt })))
     } catch {
-      /* storage unavailable — stay in-memory */
+      /* listing is non-critical */
     }
   }
 
-  // Core generation routine, shared by the composer and the recommendation chips.
+  useEffect(() => {
+    void refreshApps()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Core build routine — generates real source files, stores them on the
+  // account and renders them in the live preview.
   const runGenerate = async (fullPrompt: string, userLabel: string) => {
     if (generating) return
     setGenerating(true)
@@ -161,61 +147,33 @@ function WorkspacePage() {
     setMessages((m) => [...m, { id: uid(), role: 'user', text: userLabel }])
 
     try {
-      const fetchPromise = fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userPrompt: fullPrompt }),
-      }).then(async (res) => ({ ok: res.ok, data: await res.json() }))
+      const built = await runBuildApp({
+        data: { prompt: fullPrompt, appId: activeId },
+      })
 
-      // Hold the reveal until the compile log has fully streamed (~3.6s).
-      const [{ ok, data }] = await Promise.all([fetchPromise, delay(COMPILE_DURATION_MS)])
-
-      if (!ok || !data.success) {
-        throw new Error(data?.error || data?.message || 'Generation failed')
-      }
-
-      const newSpec = data.spec as DesignSpec
-      setSpec(newSpec)
+      setApp(built)
+      setActiveId(built.id)
       setLastPrompt(fullPrompt)
+      setSpec((s) => ({ ...s, appName: built.name, hasContent: true }))
 
       setMessages((m) => [
         ...m,
         {
           id: uid(),
           role: 'assistant',
-          text: introMessage(newSpec),
-          recommendations: recommendationsFor(newSpec),
+          text: `**${built.name}** is built. ${built.description}\n\nI wrote ${built.files.length} real source files — open the Code tab to read them, or Source to download the project. Tell me what to change next and I'll rewrite the code.`,
         },
       ])
 
-      // Persist / update the session.
-      const title = newSpec.appName || userLabel.slice(0, 24)
-      if (activeId) {
-        persist(
-          sessions.map((se) =>
-            se.id === activeId
-              ? { ...se, title, prompt: fullPrompt, spec: newSpec, updated: Date.now() }
-              : se,
-          ),
-        )
-      } else {
-        const id = uid()
-        persist(
-          [
-            { id, title, prompt: fullPrompt, spec: newSpec, updated: Date.now() },
-            ...sessions,
-          ].slice(0, 30),
-        )
-        setActiveId(id)
-      }
       setTab('chats')
+      void refreshApps()
     } catch (err) {
       setMessages((m) => [
         ...m,
         {
           id: uid(),
           role: 'assistant',
-          text: `I hit a snag compiling that: ${(err as Error).message}. Try rephrasing the prompt or generate again.`,
+          text: `I hit a snag building that: ${(err as Error).message}. Try rephrasing the prompt or build again.`,
         },
       ])
       setError((err as Error).message)
@@ -223,6 +181,7 @@ function WorkspacePage() {
       setGenerating(false)
     }
   }
+
 
   // Conversational reply path — the consultant actually talks back (distinct
   // from compiling an app). Backed by /api/chat with a local fallback.
@@ -344,11 +303,10 @@ function WorkspacePage() {
     setPrompt('')
     if (IMAGE_INTENT.test(text)) {
       void runImage(text)
-    } else if (!spec.hasContent) {
+    } else if (!app) {
       void runGenerate(text, text)
     } else if (BUILD_INTENT.test(text)) {
-      const base = lastPrompt || spec.industry || 'the current app'
-      void runGenerate(`${base}. Also ${text}.`, text)
+      void runGenerate(text, text)
     } else {
       void runChat(text)
     }
@@ -359,7 +317,7 @@ function WorkspacePage() {
     void runGenerate(`${base}. Also ${rec.append}.`, `Please add: ${rec.label}`)
   }
 
-  // Universal App Input — industry quick-action seeds run generation directly.
+  // Universal App Input — industry quick-action seeds build directly.
   const handleIndustry = (seed: string) => {
     setPrompt('')
     void runGenerate(seed, seed)
@@ -371,7 +329,7 @@ function WorkspacePage() {
   }
 
   const handleExport = () => {
-    if (spec.hasContent) downloadSourceZip(spec)
+    if (app) void downloadAppZip(app.name, app.files)
   }
 
   const handleDeploy = () => {
@@ -381,29 +339,34 @@ function WorkspacePage() {
   }
 
   const selectSession = (id: string) => {
-    const s = sessions.find((x) => x.id === id)
-    if (!s) return
     setActiveId(id)
-    setSpec(s.spec)
     setPrompt('')
-    setLastPrompt(s.prompt)
     setError(null)
-    // Restore a lightweight conversation recap for the loaded project.
-    setMessages([
-      {
-        id: uid(),
-        role: 'assistant',
-        text: introMessage(s.spec),
-        recommendations: recommendationsFor(s.spec),
-      },
-    ])
+    void (async () => {
+      try {
+        const loaded = await runGetApp({ data: { appId: id } })
+        setApp(loaded)
+        setLastPrompt(loaded.prompt)
+        setSpec((s) => ({ ...s, appName: loaded.name, hasContent: true }))
+        setMessages([
+          {
+            id: uid(),
+            role: 'assistant',
+            text: `**${loaded.name}** loaded — ${loaded.files.length} source files. ${loaded.description}\n\nTell me what to change and I'll rewrite the code.`,
+          },
+        ])
+      } catch (err) {
+        setError((err as Error).message)
+      }
+    })()
   }
 
   const deleteSession = (id: string) => {
-    const next = sessions.filter((x) => x.id !== id)
-    persist(next)
+    setApps((list) => list.filter((x) => x.id !== id))
+    void runDeleteApp({ data: { appId: id } }).catch(() => void refreshApps())
     if (activeId === id) {
       setActiveId(null)
+      setApp(null)
       setSpec(DEFAULT_SPEC)
       setPrompt('')
       setLastPrompt('')
@@ -413,6 +376,7 @@ function WorkspacePage() {
 
   const newProject = () => {
     setActiveId(null)
+    setApp(null)
     setSpec(DEFAULT_SPEC)
     setPrompt('')
     setLastPrompt('')
@@ -422,13 +386,14 @@ function WorkspacePage() {
 
   const sidebarSessions = useMemo(
     () =>
-      sessions.map((s) => ({
-        id: s.id,
-        name: s.title,
-        updated: relativeTime(s.updated),
+      apps.map((a) => ({
+        id: a.id,
+        name: a.name,
+        updated: relativeTime(a.updatedAt),
       })),
-    [sessions],
+    [apps],
   )
+
 
   return (
     <div className="workspace-light flex h-screen overflow-hidden bg-background text-foreground">
@@ -486,11 +451,7 @@ function WorkspacePage() {
           {!chatExpanded && <ResizeHandle onResize={setChatWidth} min={320} max={900} />}
 
           {!chatExpanded && <div className="hidden min-h-0 min-w-0 flex-1 lg:block">
-            <ResponsivePreview
-              spec={spec}
-              building={generating || hydrating}
-              onEdit={(updater) => setSpec((s) => updater(s))}
-            />
+            <BuiltAppPanel app={app} building={generating || hydrating} />
           </div>}
 
           {!chatExpanded && drawerOpen && <ResizeHandle side="right" onResize={setDrawerWidth} min={280} max={640} />}
