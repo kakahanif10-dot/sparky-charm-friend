@@ -3,9 +3,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Code2,
+  Copy,
   Download,
   Eye,
+  ExternalLink,
   FileCode2,
+  Globe,
   Monitor,
   RefreshCw,
   Smartphone,
