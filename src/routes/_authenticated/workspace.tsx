@@ -451,11 +451,7 @@ function WorkspacePage() {
           {!chatExpanded && <ResizeHandle onResize={setChatWidth} min={320} max={900} />}
 
           {!chatExpanded && <div className="hidden min-h-0 min-w-0 flex-1 lg:block">
-            <ResponsivePreview
-              spec={spec}
-              building={generating || hydrating}
-              onEdit={(updater) => setSpec((s) => updater(s))}
-            />
+            <BuiltAppPanel app={app} building={generating || hydrating} />
           </div>}
 
           {!chatExpanded && drawerOpen && <ResizeHandle side="right" onResize={setDrawerWidth} min={280} max={640} />}
