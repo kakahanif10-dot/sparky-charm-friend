@@ -2,8 +2,6 @@
 // (React + Tailwind) that run in the workspace preview and can be exported.
 // Runs server-side only; the Lovable AI key never reaches the browser.
 
-import { createOpenAI } from '@ai-sdk/openai'
-import { Output, streamText } from 'ai'
 import { z } from 'zod'
 
 export type BuiltFile = { path: string; content: string }
@@ -53,17 +51,6 @@ export async function buildAppFiles(
   const key = process.env['LOVABLE_API_KEY']
   if (!key) throw new Error('AI is not configured for this project.')
 
-  const runtimeFetch: typeof fetch = (input, init) => fetch(input, init)
-  const lovable = createOpenAI({
-    baseURL: 'https://ai.gateway.lovable.dev/v1',
-    apiKey: key,
-    headers: {
-      'Lovable-API-Key': key,
-      'X-Lovable-AIG-SDK': 'vercel-ai-sdk',
-    },
-    fetch: runtimeFetch,
-  })
-
   const context =
     previousFiles && previousFiles.length
       ? `\n\nThis is a CHANGE REQUEST on an existing app. Here are its current files — return the FULL updated file set, keeping everything the user did not ask to change:\n${previousFiles
@@ -72,23 +59,99 @@ export async function buildAppFiles(
           .slice(0, 60000)}`
       : ''
 
-  const result = streamText({
-    model: lovable.responses(MODEL),
-    system: SYSTEM,
-    prompt: `${prompt}${context}`,
-    output: Output.object({ schema: AppSchema }),
-    providerOptions: {
-      openai: {
-        forceReasoning: true,
-        reasoningEffort: 'low',
-        reasoningSummary: 'auto',
-        store: false,
-        include: ['reasoning.encrypted_content'],
-      },
+  const res = await fetch('https://ai.gateway.lovable.dev/v1/responses', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Lovable-API-Key': key,
+      'X-Lovable-AIG-SDK': 'fetch',
     },
+    body: JSON.stringify({
+      model: MODEL,
+      stream: true,
+      store: false,
+      reasoning: { effort: 'low', summary: 'auto' },
+      input: [
+        { role: 'developer', content: SYSTEM },
+        { role: 'user', content: [{ type: 'input_text', text: `${prompt}${context}` }] },
+      ],
+      text: {
+        format: {
+          type: 'json_schema',
+          name: 'app',
+          strict: true,
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['name', 'description', 'files'],
+            properties: {
+              name: { type: 'string' },
+              description: { type: 'string' },
+              files: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['path', 'content'],
+                  properties: { path: { type: 'string' }, content: { type: 'string' } },
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
   })
 
-  const app = (await result.output) as BuiltApp
+  if (!res.ok || !res.body) {
+    const body = await res.text().catch(() => '')
+    if (res.status === 402) throw new Error('Out of AI credits. Add credits to keep building.')
+    if (res.status === 429) throw new Error('Too many builds right now. Wait a moment and try again.')
+    throw new Error(`AI request failed (${res.status}). ${body.slice(0, 200)}`)
+  }
+
+  // Read the SSE stream and accumulate the answer text ourselves.
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buf = ''
+  let text = ''
+  let finalText = ''
+  let streamError = ''
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += decoder.decode(value, { stream: true })
+    let idx: number
+    while ((idx = buf.indexOf('\n\n')) !== -1) {
+      const frame = buf.slice(0, idx)
+      buf = buf.slice(idx + 2)
+      for (const line of frame.split('\n')) {
+        if (!line.startsWith('data:')) continue
+        const data = line.slice(5).trim()
+        if (!data || data === '[DONE]') continue
+        try {
+          const ev = JSON.parse(data)
+          if (ev.type === 'response.output_text.delta') text += ev.delta ?? ''
+          else if (ev.type === 'response.output_text.done' && ev.text) finalText = ev.text
+          else if (ev.type === 'response.failed' || ev.type === 'error')
+            streamError = ev.response?.error?.message ?? ev.message ?? 'The AI stopped unexpectedly.'
+          else if (ev.type === 'response.incomplete')
+            streamError = 'The app was too large to finish. Try a simpler prompt.'
+        } catch {
+          /* ignore partial frame */
+        }
+      }
+    }
+  }
+
+  const raw = finalText || text
+  if (!raw) throw new Error(streamError || 'The AI returned no code. Please build again.')
+  let app: BuiltApp
+  try {
+    app = AppSchema.parse(JSON.parse(raw)) as BuiltApp
+  } catch {
+    throw new Error(streamError || 'The AI returned incomplete code. Please build again.')
+  }
 
   const files = (app.files ?? [])
     .filter((f) => f && typeof f.path === 'string' && typeof f.content === 'string')
