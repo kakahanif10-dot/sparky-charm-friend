@@ -43,11 +43,14 @@ Output contract (strict):
 
 Return only the structured object. No markdown, no code fences inside file contents.`
 
-/** Generates real source files for a prompt using Lovable AI. */
+/** Generates real source files for a prompt. Uses the user's Gemini key when set, else Lovable AI. */
 export async function buildAppFiles(
   prompt: string,
   previousFiles?: BuiltFile[],
 ): Promise<BuiltApp> {
+  const geminiKey = process.env['GEMINI_API_KEY']
+  if (geminiKey) return buildWithGemini(geminiKey, prompt, previousFiles)
+
   const key = process.env['LOVABLE_API_KEY']
   if (!key) throw new Error('AI is not configured for this project.')
 
