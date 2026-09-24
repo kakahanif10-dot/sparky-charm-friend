@@ -170,3 +170,89 @@ export async function buildAppFiles(
     files,
   }
 }
+
+/** Builds via the user's own Google Gemini key (generateContent with JSON schema). */
+async function buildWithGemini(
+  apiKey: string,
+  prompt: string,
+  previousFiles?: BuiltFile[],
+): Promise<BuiltApp> {
+  const context =
+    previousFiles && previousFiles.length
+      ? `\n\nThis is a CHANGE REQUEST on an existing app. Here are its current files — return the FULL updated file set, keeping everything the user did not ask to change:\n${previousFiles
+          .map((f) => `--- ${f.path} ---\n${f.content}`)
+          .join('\n\n')
+          .slice(0, 60000)}`
+      : ''
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: SYSTEM }] },
+        contents: [{ role: 'user', parts: [{ text: `${prompt}${context}` }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: 'OBJECT',
+            required: ['name', 'description', 'files'],
+            properties: {
+              name: { type: 'STRING' },
+              description: { type: 'STRING' },
+              files: {
+                type: 'ARRAY',
+                items: {
+                  type: 'OBJECT',
+                  required: ['path', 'content'],
+                  properties: { path: { type: 'STRING' }, content: { type: 'STRING' } },
+                },
+              },
+            },
+          },
+        },
+      }),
+    },
+  )
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '')
+    if (res.status === 400 || res.status === 403)
+      throw new Error('The Gemini API key was rejected. Check the key and try again.')
+    if (res.status === 429) throw new Error('Gemini rate limit reached. Wait a moment and try again.')
+    throw new Error(`Gemini request failed (${res.status}). ${body.slice(0, 200)}`)
+  }
+
+  const json = (await res.json()) as {
+    candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[]
+  }
+  const candidate = json.candidates?.[0]
+  const raw = candidate?.content?.parts?.map((p) => p.text ?? '').join('') ?? ''
+  if (!raw) {
+    if (candidate?.finishReason === 'MAX_TOKENS')
+      throw new Error('The app was too large to finish. Try a simpler prompt.')
+    throw new Error('The AI returned no code. Please build again.')
+  }
+
+  let app: BuiltApp
+  try {
+    app = AppSchema.parse(JSON.parse(raw)) as BuiltApp
+  } catch {
+    throw new Error('The AI returned incomplete code. Please build again.')
+  }
+
+  const files = (app.files ?? [])
+    .filter((f) => f && typeof f.path === 'string' && typeof f.content === 'string')
+    .map((f) => ({ path: f.path.replace(/^\.?\//, ''), content: f.content }))
+
+  if (!files.some((f) => f.path === 'src/App.jsx')) {
+    throw new Error('The build did not produce an app entry file. Please try again.')
+  }
+
+  return {
+    name: (app.name || 'Untitled app').slice(0, 60),
+    description: (app.description || '').slice(0, 400),
+    files,
+  }
+}
