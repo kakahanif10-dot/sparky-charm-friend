@@ -2,8 +2,6 @@
 // (React + Tailwind) that run in the workspace preview and can be exported.
 // Runs server-side only; the Lovable AI key never reaches the browser.
 
-import { createOpenAI } from '@ai-sdk/openai'
-import { Output, streamText } from 'ai'
 import { z } from 'zod'
 
 export type BuiltFile = { path: string; content: string }
