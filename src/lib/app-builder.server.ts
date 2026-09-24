@@ -80,7 +80,24 @@ export async function buildAppFiles(
           type: 'json_schema',
           name: 'app',
           strict: true,
-          schema: z.toJSONSchema(AppSchema),
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['name', 'description', 'files'],
+            properties: {
+              name: { type: 'string' },
+              description: { type: 'string' },
+              files: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['path', 'content'],
+                  properties: { path: { type: 'string' }, content: { type: 'string' } },
+                },
+              },
+            },
+          },
         },
       },
     }),
