@@ -10,134 +10,33 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
-import { Route as AuthenticatedWorkspaceRouteImport } from './routes/_authenticated/workspace'
-import { Route as ApiChatRouteImport } from './routes/api/chat'
-import { Route as ApiGenerateRouteImport } from './routes/api/generate'
-import { Route as ApiImageRouteImport } from './routes/api/image'
-import { Route as ApiPublicAppSlugRouteImport } from './routes/api/public/app/$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedOnboardingRoute = AuthenticatedOnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedWorkspaceRoute = AuthenticatedWorkspaceRouteImport.update({
-  id: '/workspace',
-  path: '/workspace',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const ApiChatRoute = ApiChatRouteImport.update({
-  id: '/api/chat',
-  path: '/api/chat',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiGenerateRoute = ApiGenerateRouteImport.update({
-  id: '/api/generate',
-  path: '/api/generate',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiImageRoute = ApiImageRouteImport.update({
-  id: '/api/image',
-  path: '/api/image',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicAppSlugRoute = ApiPublicAppSlugRouteImport.update({
-  id: '/api/public/app/$slug',
-  path: '/api/public/app/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/login': typeof LoginRoute
-  '/onboarding': typeof AuthenticatedOnboardingRoute
-  '/workspace': typeof AuthenticatedWorkspaceRoute
-  '/api/chat': typeof ApiChatRoute
-  '/api/generate': typeof ApiGenerateRoute
-  '/api/image': typeof ApiImageRoute
-  '/api/public/app/$slug': typeof ApiPublicAppSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/login': typeof LoginRoute
-  '/onboarding': typeof AuthenticatedOnboardingRoute
-  '/workspace': typeof AuthenticatedWorkspaceRoute
-  '/api/chat': typeof ApiChatRoute
-  '/api/generate': typeof ApiGenerateRoute
-  '/api/image': typeof ApiImageRoute
-  '/api/public/app/$slug': typeof ApiPublicAppSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
-  '/login': typeof LoginRoute
-  '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
-  '/_authenticated/workspace': typeof AuthenticatedWorkspaceRoute
-  '/api/chat': typeof ApiChatRoute
-  '/api/generate': typeof ApiGenerateRoute
-  '/api/image': typeof ApiImageRoute
-  '/api/public/app/$slug': typeof ApiPublicAppSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/login'
-    | '/onboarding'
-    | '/workspace'
-    | '/api/chat'
-    | '/api/generate'
-    | '/api/image'
-    | '/api/public/app/$slug'
+  fullPaths: '/'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/login'
-    | '/onboarding'
-    | '/workspace'
-    | '/api/chat'
-    | '/api/generate'
-    | '/api/image'
-    | '/api/public/app/$slug'
-  id:
-    | '__root__'
-    | '/'
-    | '/_authenticated'
-    | '/login'
-    | '/_authenticated/onboarding'
-    | '/_authenticated/workspace'
-    | '/api/chat'
-    | '/api/generate'
-    | '/api/image'
-    | '/api/public/app/$slug'
+  to: '/'
+  id: '__root__' | '/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
-  LoginRoute: typeof LoginRoute
-  ApiChatRoute: typeof ApiChatRoute
-  ApiGenerateRoute: typeof ApiGenerateRoute
-  ApiImageRoute: typeof ApiImageRoute
-  ApiPublicAppSlugRoute: typeof ApiPublicAppSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -149,86 +48,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated': {
-      id: '/_authenticated'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/onboarding': {
-      id: '/_authenticated/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof AuthenticatedOnboardingRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/workspace': {
-      id: '/_authenticated/workspace'
-      path: '/workspace'
-      fullPath: '/workspace'
-      preLoaderRoute: typeof AuthenticatedWorkspaceRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/api/chat': {
-      id: '/api/chat'
-      path: '/api/chat'
-      fullPath: '/api/chat'
-      preLoaderRoute: typeof ApiChatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/generate': {
-      id: '/api/generate'
-      path: '/api/generate'
-      fullPath: '/api/generate'
-      preLoaderRoute: typeof ApiGenerateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/image': {
-      id: '/api/image'
-      path: '/api/image'
-      fullPath: '/api/image'
-      preLoaderRoute: typeof ApiImageRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/app/$slug': {
-      id: '/api/public/app/$slug'
-      path: '/api/public/app/$slug'
-      fullPath: '/api/public/app/$slug'
-      preLoaderRoute: typeof ApiPublicAppSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
-interface AuthenticatedRouteRouteChildren {
-  AuthenticatedOnboardingRoute: typeof AuthenticatedOnboardingRoute
-  AuthenticatedWorkspaceRoute: typeof AuthenticatedWorkspaceRoute
-}
-
-const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedOnboardingRoute: AuthenticatedOnboardingRoute,
-  AuthenticatedWorkspaceRoute: AuthenticatedWorkspaceRoute,
-}
-
-const AuthenticatedRouteRouteWithChildren =
-  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
-  LoginRoute: LoginRoute,
-  ApiChatRoute: ApiChatRoute,
-  ApiGenerateRoute: ApiGenerateRoute,
-  ApiImageRoute: ApiImageRoute,
-  ApiPublicAppSlugRoute: ApiPublicAppSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
